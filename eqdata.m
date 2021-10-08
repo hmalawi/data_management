@@ -29,7 +29,7 @@ function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype
 % No arguments will be returned. There will be an output file saved in to the directory fdir. Will include:
 % #Network  Station  sLatitude  sLongitude  EventID  tOrigin  eLatitude  eLongitude  Depth(km)
 %
-% Written by Huda Al Alawi - November 11th, 2020.
+% Written by Huda Al Alawi (halawi@princeton.edu) - November 11th, 2020.
 % Last modified by Huda Al Alawi - October 8th, 2021.
 %
 
