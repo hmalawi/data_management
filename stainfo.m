@@ -5,8 +5,6 @@ function stainfo(fdir, tstart, tend, minlat, maxlat, minlon, maxlon)
 % website based on specific start and end time, and within a certain
 % location defined by its longitude and latitude ranges.
 %
-% Written by Huda Al Alawi - November 11th, 2020.
-% Last modified by Huda Al Alawi - September 23rd, 2021.
 %
 % INPUT:
 %
@@ -25,12 +23,14 @@ function stainfo(fdir, tstart, tend, minlat, maxlat, minlon, maxlon)
 % latitude [-90:90] and longitude [-180:180]
 % 
 %
-%
 % OUTPUT:
 % No arguments will be returned. There will be an output file 'stationinfo.txt' saved in to the directory fdir. Will include:
 % #Network  Station  Latitude  Longitude  Elevation  StartTime  EndTime
 % There are stations which do not have end time (still operating). Today's
 % date will be assigned to those to avoid issues when using EQDATA.M
+%
+% Written by Huda Al Alawi - November 11th, 2020.
+% Last modified by Huda Al Alawi - October 8th, 2021.
 %
 
 % To get data from IRIS Web Services
