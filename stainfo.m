@@ -29,7 +29,7 @@ function stainfo(fdir, tstart, tend, minlat, maxlat, minlon, maxlon)
 % There are stations which do not have end time (still operating). Today's
 % date will be assigned to those to avoid issues when using EQDATA.M
 %
-% Written by Huda Al Alawi - November 11th, 2020.
+% Written by Huda Al Alawi (halawi@princeton.edu) - November 11th, 2020.
 % Last modified by Huda Al Alawi - October 8th, 2021.
 %
 
