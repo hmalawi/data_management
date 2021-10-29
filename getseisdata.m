@@ -1,4 +1,4 @@
-function getseisdata(infdir, outfdir, fname, tstart, tend, channel)
+function getseisdata(infdir, fname, tstart, tend, channel, outfdir, outformat)
 % getseisdata(infdir, outfdir, fname, len, channel)
 %
 % This function facilitates downloading multi-seismograms for known 
@@ -7,16 +7,17 @@ function getseisdata(infdir, outfdir, fname, tstart, tend, channel)
 %
 % INPUT:
 %
-% infdir     The directory at which the input file is located
-% fname      The name of the input file
-% outfdir    The directory at which the output files will be saved
-% tstart     The relative start time of the requested portion of the
-%            seismogram (in minutes assuming the origin time represents 0
-%            min) [defaulted]
-% tend       The relative end time of the requested portion ot the
-%            seismogram (in minutes assuming the origin time represents 0
-%            min) [defaulted]
-% channel    The channel of interest [defaulted]
+% infdir       The directory at which the input file is located
+% fname        The name of the input file
+% tstart       The relative start time of the requested portion of the
+%              seismogram (in minutes assuming the origin time represents 
+%              0 min) [defaulted]
+% tend         The relative end time of the requested portion ot the
+%              seismogram (in minutes assuming the origin time represents 
+%              0 min) [defaulted]
+% channel      The channel of interest [defaulted]
+% outfdir      The directory at which the output files will be saved
+% outformat    The 
 %
 % OUTPUT:
 % No arguments will be returned. The seismograms will be saved in (outdir)
