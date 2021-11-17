@@ -1,5 +1,5 @@
-function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype, num)
-% eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype, num)
+function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype)
+% eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype)
 %
 % This function is to get information about events from IRIS services
 % website based on specific start and end time, and within a certain
@@ -16,7 +16,6 @@ function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype
 % maxradius     Specify maximum distance from the geographic point defined by latitude and longitude [defaulted]
 % minmag        Limit to events with a magnitude larger than or equal to the specified minimum [defaulted]
 % magtype       Type of Magnitude used to test minimum and maximum limits. Case insensitive. ex. ML Ms mb Mw all preferred [defaulted]
-% num           Maximum number of events that would want to extract for every station [defaulted]
 %
 % All time should be in this format: 1991-01-01T00:00:00
 % minradius and maxradius have values from 0 to 180 degrees
@@ -35,8 +34,8 @@ function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype
 % STAINFO
 %
 %
-% Written by Huda Al Alawi (halawi@princeton.edu) - November 11th, 2020.
-% Last modified by Huda Al Alawi - October 26th, 2021.
+% Written by Huda Al Alawi (halawi@princeton.edu) - November 11, 2020.
+% Last modified by Huda Al Alawi - Novermber 17, 2021.
 %
 
 % To get data from IRIS Web Services
@@ -51,10 +50,9 @@ defval('minradius', 0)
 defval('maxradius', 180)
 defval('minmag', 5)
 defval('magtype', 'mb')
-defval('num', 10)
 
 % Prepare the general form of the request
-evturl = strcat(evturl, 'query?starttime=%s&endtime=%s&latitude=%f&longitude=%f&minradius=%f&maxradius=%f&minmagnitude=%f&includeallmagnitudes=true&magtype=%s&orderby=magnitude&limit=%d&format=%s');
+evturl = strcat(evturl, 'query?starttime=%s&endtime=%s&latitude=%f&longitude=%f&minradius=%f&maxradius=%f&minmagnitude=%f&includeallmagnitudes=true&magtype=%s&orderby=magnitude&format=%s');
 % Open the file that contains stations information
 fid = fopen(strcat(fdir, fname), 'r');
 % Read the data, will need the the header lines (2-5) for later
@@ -89,11 +87,11 @@ fprintf(fid, 'The maximum number of earthquakes per station was chosen to be %d 
 % Data header
 fprintf(fid, '#Network \t Station \t sLatitude \t sLongitude \t EventID \t tOrigin \t eLatitude \t eLongitude \t Depth(km) \n');
 
-% For each station, we should find a "num" of earthquakes within a distance
+% For each station, we should find earthquakes within a distance
 % between "minradius" and "maxradius"
 for ii = 1:length(data{1})
     someevt = sprintf(evturl, tstart, tend, data{1,3}(ii), data{1,4}(ii), ...
-        minradius, maxradius, minmag, magtype, num, outformat);
+        minradius, maxradius, minmag, magtype, outformat);
     % Read the data from the URL
     options = weboptions('Timeout', 120);
     evt = webread(someevt, options);
