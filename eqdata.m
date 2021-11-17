@@ -1,5 +1,5 @@
-function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype)
-% eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype)
+function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype, maxlim)
+% eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype, maxlim)
 %
 % This function is to get information about events from IRIS services
 % website based on specific start and end time, and within a certain
@@ -16,6 +16,7 @@ function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype
 % maxradius     Specify maximum distance from the geographic point defined by latitude and longitude [defaulted]
 % minmag        Limit to events with a magnitude larger than or equal to the specified minimum [defaulted]
 % magtype       Type of Magnitude used to test minimum and maximum limits. Case insensitive. ex. ML Ms mb Mw all preferred [defaulted]
+% maxlim        If the number of the founded earthquakes was larger that "maxlim", take only "maxlim" of them [defaulted]
 %
 % All time should be in this format: 1991-01-01T00:00:00
 % minradius and maxradius have values from 0 to 180 degrees
@@ -48,8 +49,9 @@ defval('tstart', strcat(string(datetime('yesterday')),'T00:00:00'))
 defval('tend', strcat(string(datetime('today')), 'T00:00:00'))
 defval('minradius', 0)
 defval('maxradius', 180)
-defval('minmag', 5)
+defval('minmag', 5.5)
 defval('magtype', 'mb')
+defval('maxlim', 50)
 
 % Prepare the general form of the request
 evturl = strcat(evturl, 'query?starttime=%s&endtime=%s&latitude=%f&longitude=%f&minradius=%f&maxradius=%f&minmagnitude=%f&includeallmagnitudes=true&magtype=%s&orderby=magnitude&format=%s');
@@ -101,7 +103,7 @@ for ii = 1:length(data{1})
         continue
     end
     
-    % Trying to extract the information here...
+    % Trying to extract information here...
     pos = strfind(evt, '|');
     % Find the number of readings and remove the ones of the header
     n = (length(pos) - 12) / 12;
@@ -110,19 +112,38 @@ for ii = 1:length(data{1})
         str2double(string(extractBetween(evtstruct{1,2}(:), 6, 7))), ...
         str2double(string(extractBetween(evtstruct{1,2}(:) , 9 , 10))));
     
-    for jj = 1:length(evtstruct{1})
+    % If the number of events was larger than "maxlim", only take "maxlim" of them
+    if length(evtstruct{1}) > maxlim
+        for jj = 1:maxlim
         % We need to check if the origin time of the earthquake is within the
         % recording time of the station. Keep it if true
-        if isbetween(origin(jj) , stastart(ii) , staend(ii)) == 1
+            if isbetween(origin(jj) , stastart(ii) , staend(ii)) == 1
             % #Network  Station  sLatitude  sLongitude  EventID  tOrigin  
             % eLatitude  eLongitude  Depth(km)
             % Have to work on the format a little bit, later...
-            fprintf(fid, '%-s %19s %19.3f %16.3f %17d %27s %21.3f %19.3f %20.2f', ...
+                fprintf(fid, '%-s %19s %19.3f %16.3f %17d %27s %21.3f %19.3f %20.2f', ...
                 string(data{1}(ii)), string(data{2}(ii)), data{3}(ii), ...
                 data{4}(ii), evtstruct{1}(jj), string(evtstruct{2}(jj)),...
                 evtstruct{3}(jj), evtstruct{4}(jj), evtstruct{5}(jj));
+            end
+        end
+        
+    else
+        for jj = 1:length(evtstruct{1})
+        % We need to check if the origin time of the earthquake is within the
+        % recording time of the station. Keep it if true
+            if isbetween(origin(jj) , stastart(ii) , staend(ii)) == 1
+            % #Network  Station  sLatitude  sLongitude  EventID  tOrigin  
+            % eLatitude  eLongitude  Depth(km)
+            % Have to work on the format a little bit, later...
+                fprintf(fid, '%-s %19s %19.3f %16.3f %17d %27s %21.3f %19.3f %20.2f', ...
+                string(data{1}(ii)), string(data{2}(ii)), data{3}(ii), ...
+                data{4}(ii), evtstruct{1}(jj), string(evtstruct{2}(jj)),...
+                evtstruct{3}(jj), evtstruct{4}(jj), evtstruct{5}(jj));
+            end
         end
     end
+    
 end
 
 fclose(fid);
