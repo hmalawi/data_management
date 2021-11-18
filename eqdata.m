@@ -1,5 +1,5 @@
-function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype, maxlim)
-% eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype, maxlim)
+function eqdata(fdir, fname, minradius, maxradius, minmag, magtype, maxlim)
+% eqdata(fdir, fname, minradius, maxradius, minmag, magtype, maxlim)
 %
 % This function is to get information about events from IRIS services
 % website based on specific start and end time, and within a certain
@@ -9,9 +9,7 @@ function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype
 % INPUT:
 %
 % fdir          The directory at which the input file is located and output file will be saved
-% fname         The name of file that contains stations info. (output of STAINFO)
-% tstart        Limit to events occurring on or after the specified start time [defaulted]
-% tend          Limit to events occurring on or before the specified end time [defaulted]	
+% fname         The name of file that contains stations info. (output of STAINFO)	
 % minradius     Specify minimum distance from the geographic point defined by latitude and longitude [defaulted]
 % maxradius     Specify maximum distance from the geographic point defined by latitude and longitude [defaulted]
 % minmag        Limit to events with a magnitude larger than or equal to the specified minimum [defaulted]
@@ -36,25 +34,17 @@ function eqdata(fdir, fname, tstart, tend, minradius, maxradius, minmag, magtype
 %
 %
 % Written by Huda Al Alawi (halawi@princeton.edu) - November 11, 2020.
-% Last modified by Huda Al Alawi - Novermber 17, 2021.
+% Last modified by Huda Al Alawi - Novermber 18, 2021.
 %
 
-% To get data from IRIS Web Services
-evturl = 'http://service.iris.edu/fdsnws/event/1/';
-outformat = 'text';
-
-datetime.setDefaultFormats('defaultdate', 'yyyy-MM-dd')
 % Define default values
-defval('tstart', strcat(string(datetime('yesterday')),'T00:00:00'))
-defval('tend', strcat(string(datetime('today')), 'T00:00:00'))
+datetime.setDefaultFormats('defaultdate', 'yyyy-MM-dd')
 defval('minradius', 0)
 defval('maxradius', 180)
 defval('minmag', 5.5)
 defval('magtype', 'mb')
 defval('maxlim', 50)
 
-% Prepare the general form of the request
-evturl = strcat(evturl, 'query?starttime=%s&endtime=%s&latitude=%f&longitude=%f&minradius=%f&maxradius=%f&minmagnitude=%f&includeallmagnitudes=true&magtype=%s&orderby=magnitude&format=%s');
 % Open the file that contains stations information
 fid = fopen(strcat(fdir, fname), 'r');
 % Read the data, will need the the header lines (2-5) for later
@@ -67,14 +57,12 @@ end
 data = textscan(fid, '%s%s%f%f%f%s%s', 'HeaderLine', 2);
 fclose(fid);
 
-% Convert start and end time to the proper format rather than string. Will
-% need it later!
-stastart = datetime(str2double(string(extractBetween(data{1,6}(:), 1, 4)))...
-    , str2double(string(extractBetween(data{1,6}(:), 6, 7))), ...
-    str2double(string(extractBetween(data{1,6}(:), 9, 10))));
-staend = datetime(str2double(string(extractBetween(data{1,7}(:), 1, 4)))...
-    , str2double(string(extractBetween(data{1,7}(:), 6, 7))), ...
-    str2double(string(extractBetween(data{1,7}(:), 9, 10))));
+% Convert the start and end time to proper format for irisFetch call
+tstart = string(data{6});
+tend = string(data{7});
+% Remove the "T"
+tstart = strcat(extractBefore(tstart,'T'), " ", extractAfter(tstart,'T'));
+tend = strcat(extractBefore(tend,'T'), " ", extractAfter(tend,'T'));
 
 % Open a file to print the final data
 outfile = 'staevt.txt';
@@ -84,64 +72,73 @@ fprintf(fid, 'Stations were collected for\n %s %s %s %s', hlines{1}, ...
     hlines{2}, hlines{3}, hlines{4});
 fprintf(fid, 'Earthquakes were specified to have\n A distance of [%.2f, %.2f] from the station\n A minimum magnitude of %.2f %s', ...
     minradius, maxradius, minmag, magtype);
-fprintf(fid, 'The maximum number of earthquakes per station was chosen to be %d earthquakes\n\n',...
-    num);
+fprintf(fid, '. The maximum number of earthquakes per station was chosen to be %d earthquakes\n\n',...
+    maxlim);
 % Data header
 fprintf(fid, '#Network \t Station \t sLatitude \t sLongitude \t EventID \t tOrigin \t eLatitude \t eLongitude \t Depth(km) \n');
 
 % For each station, we should find earthquakes within a distance
 % between "minradius" and "maxradius"
 for ii = 1:length(data{1})
-    someevt = sprintf(evturl, tstart, tend, data{1,3}(ii), data{1,4}(ii), ...
-        minradius, maxradius, minmag, magtype, outformat);
-    % Read the data from the URL
-    options = weboptions('Timeout', 120);
-    evt = webread(someevt, options);
-    % If no events were found for the given specifications, skip this
-    % station
-    if isempty(evt) == 1
+    % Should use try/catch?
+    try
+    % Find the events here
+    ev = irisFetch.Events('startTime', tstart(ii), ...
+        'endTime', tend(ii),'radialcoordinates', [data{3}(ii), ...
+        data{4}(ii), maxradius, minradius], 'MinimumMagnitude', minmag,...
+        'magnitudeType', magtype);
+    catch
         continue
     end
     
-    % Trying to extract information here...
-    pos = strfind(evt, '|');
-    % Find the number of readings and remove the ones of the header
-    n = (length(pos) - 12) / 12;
-    evtstruct = textscan(evt', '%d%s%f%f%f%s%s%s%s%s%s%s%s', n, 'HeaderLines', 1, 'Delimiter', '|');
-    origin = datetime(str2double(string(extractBetween(evtstruct{1,2}(:), 1, 4))),...
-        str2double(string(extractBetween(evtstruct{1,2}(:), 6, 7))), ...
-        str2double(string(extractBetween(evtstruct{1,2}(:) , 9 , 10))));
+    % If no events where found, skip the station
+    if isempty(ev)
+        continue
+    end
     
-    % If the number of events was larger than "maxlim", only take "maxlim" of them
-    if length(evtstruct{1}) > maxlim
-        for jj = 1:maxlim
-        % We need to check if the origin time of the earthquake is within the
-        % recording time of the station. Keep it if true
-            if isbetween(origin(jj) , stastart(ii) , staend(ii)) == 1
+    % Sort the results by magnitude (descending)
+    % Should take into account finding only one event (struct2table will
+    % give an error in that case)
+    if length(ev) == 1
+        % #Network  Station  sLatitude  sLongitude  EventID  tOrigin  
+        % eLatitude  eLongitude  Depth(km)
+          fprintf(fid, '%-s %19s %19.3f %16.3f %17s %27s %21.3f %19.3f %20.2f', ...
+              string(data{1}(ii)), string(data{2}(ii)), data{3}(ii), ...
+              data{4}(ii), extractAfter(ev(1).PublicId, '='), ...
+              ev(1).PreferredTime, ev(1).PreferredLatitude, ...
+              ev(1).PreferredLongitude, ev(1).PreferredDepth);
+          
+    else 
+        % First sort the data based on magnitude
+        evtable = struct2table(ev);
+        sortev = sortrows(evtable, 'PreferredMagnitudeValue', 'descend');
+        evstruct = table2struct(sortev);
+        
+        
+        % If the number of events was larger than "maxlim", only take "maxlim" of them
+        if length(ev) > maxlim
+            for jj = 1:maxlim
             % #Network  Station  sLatitude  sLongitude  EventID  tOrigin  
             % eLatitude  eLongitude  Depth(km)
-            % Have to work on the format a little bit, later...
-                fprintf(fid, '%-s %19s %19.3f %16.3f %17d %27s %21.3f %19.3f %20.2f', ...
+            fprintf(fid, '%-s %19s %19.3f %16.3f %17s %27s %21.3f %19.3f %20.2f', ...
                 string(data{1}(ii)), string(data{2}(ii)), data{3}(ii), ...
-                data{4}(ii), evtstruct{1}(jj), string(evtstruct{2}(jj)),...
-                evtstruct{3}(jj), evtstruct{4}(jj), evtstruct{5}(jj));
+                data{4}(ii), extractAfter(evstruct(jj).PublicId, '='), ...
+                evstruct(jj).PreferredTime, evstruct(jj).PreferredLatitude, ...
+                evstruct(jj).PreferredLongitude, evstruct(jj).PreferredDepth);
+            end
+    % Else, just take them all
+        else
+            for jj = 1:length(evstruct)
+            % #Network  Station  sLatitude  sLongitude  EventID  tOrigin  
+            % eLatitude  eLongitude  Depth(km)
+            fprintf(fid, '%-s %19s %19.3f %16.3f %17s %27s %21.3f %19.3f %20.2f', ...
+                string(data{1}(ii)), string(data{2}(ii)), data{3}(ii), ...
+                data{4}(ii), extractAfter(evstruct(jj).PublicId, '='), ...
+                evstruct(jj).PreferredTime, evstruct(jj).PreferredLatitude, ...
+                evstruct(jj).PreferredLongitude, evstruct(jj).PreferredDepth);
             end
         end
         
-    else
-        for jj = 1:length(evtstruct{1})
-        % We need to check if the origin time of the earthquake is within the
-        % recording time of the station. Keep it if true
-            if isbetween(origin(jj) , stastart(ii) , staend(ii)) == 1
-            % #Network  Station  sLatitude  sLongitude  EventID  tOrigin  
-            % eLatitude  eLongitude  Depth(km)
-            % Have to work on the format a little bit, later...
-                fprintf(fid, '%-s %19s %19.3f %16.3f %17d %27s %21.3f %19.3f %20.2f', ...
-                string(data{1}(ii)), string(data{2}(ii)), data{3}(ii), ...
-                data{4}(ii), evtstruct{1}(jj), string(evtstruct{2}(jj)),...
-                evtstruct{3}(jj), evtstruct{4}(jj), evtstruct{5}(jj));
-            end
-        end
     end
     
 end
