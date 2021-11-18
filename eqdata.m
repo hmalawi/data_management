@@ -31,6 +31,7 @@ function eqdata(fdir, fname, minradius, maxradius, minmag, magtype, maxlim)
 % SEE ALSO:
 %
 % STAINFO
+% Requires irisFetch from https://ds.iris.edu/ds/nodes/dmc/manuals/irisfetchm/
 %
 %
 % Written by Huda Al Alawi (halawi@princeton.edu) - November 11, 2020.
