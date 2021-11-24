@@ -35,7 +35,7 @@ function seisdata = getseisdata(infdir, fname, tstart, tend, channel, outfdir, o
 % Requires irisFetch from https://ds.iris.edu/ds/nodes/dmc/manuals/irisfetchm/
 %
 % Written by Huda Al Alawi (halawi@princeton.edu) - October 24, 2021.
-% Last modified by Huda Al Alawi - November 12, 2021.
+% Last modified by Huda Al Alawi - November 24 2021.
 %
 
 % Define default values
@@ -83,6 +83,9 @@ end
 t1 = string(datestr(t1, 'yyyy-mm-dd HH:MM:SS'));
 t2 = string(datestr(t2, 'yyyy-mm-dd HH:MM:SS'));
 
+% Initialize an array to keep record of the errors
+notfound = zeros(length(net), 1);
+
 % Depending on the chosen "outformat", start requesting the data
 switch outformat
     case 1
@@ -91,11 +94,15 @@ switch outformat
         % For all event-station pairs in the file, call irisFetch to get 
         % the data and store them into a structure array
         for ii = 1:length(net)
-            tr = irisFetch.Traces(net(ii), sta(ii), '00', channel, t1(ii), t2(ii));
-            % Check if data exists
-            if isfield(tr, 'data') &&  ~isempty(tr.data)
-                
+            try
+                tr = irisFetch.Traces(net(ii), sta(ii), '00', channel, t1(ii), t2(ii));
+            catch
+                % If couldn't find the data, assign the index to 1 and skip
+                notfound(ii) = 1;
+                continue
             end
+            % If data was found, store it into a structure
+            seis(ii).info = tr;
         end
         
     case 2
