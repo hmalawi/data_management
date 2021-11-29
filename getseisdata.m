@@ -22,7 +22,7 @@ function seisdata = getseisdata(infdir, fname, tstart, tend, channel, outfdir, o
 %              2 for SAC files
 %
 % OUTPUT:
-% seisdata     A structure array that contains time-series data in addition
+% seisdata     A structure array that contains tendtime-series data in addition
 %              to station- & earthquake- related information (i.e., name,
 %              location, channel, etc.). This structure will only be
 %              returned if "outformat" is 2.
@@ -40,7 +40,7 @@ function seisdata = getseisdata(infdir, fname, tstart, tend, channel, outfdir, o
 
 % Define default values
 defval('tstart', 15)
-defval('tend', 25)
+defval('tend', 25)outfdir
 defval('channel', 'BHZ')
 
 % Before doing anything, check tstart and tend values
@@ -64,7 +64,7 @@ eqtime = string(data{1,6});
 newtime = strcat(extractBefore(eqtime,'T'), " ", extractAfter(eqtime,'T'));
 % Convert newtime from string to serial date number
 % BE CAREFUL, the format is case sensitive (check datetime documentation)
-newtime = datenum(datetime(newtime, 'InputFormat', 'yyyy-MM-dd HH:mm:ss'));
+newtime = datenum(datetime(newtime, 'InputFormat', 'yyyy-MM-dd HH:mm:ss.S'));
 
 % Now need to define t1 & t2 to use irisFetch
 % addtodate only works for scalar! Cannot add to the whole array at once
@@ -83,26 +83,63 @@ end
 t1 = string(datestr(t1, 'yyyy-mm-dd HH:MM:SS'));
 t2 = string(datestr(t2, 'yyyy-mm-dd HH:MM:SS'));
 
-% Initialize an array to keep record of the errors
-notfound = zeros(length(net), 1);
-
 % Depending on the chosen "outformat", start requesting the data
 switch outformat
     case 1
+        % Let the structure hold 20k everytime (will make it usder-defined
+        % limit later)
+        sizestruct = 20000;
+        % See how many 20ks in the array we have, and decide the number of
+        % loop iterations accordingly
+        if mod(length(net), sizestruct) ~= 0
+            num = round(length(net)/sizestruct) + 1;
+        else
+            num = length(net)/sizestruct;
+        end
         % Initialize a structure
-        seis = struct;
-        % For all event-station pairs in the file, call irisFetch to get 
-        % the data and store them into a structure array
-        for ii = 1:length(net)
-            try
-                tr = irisFetch.Traces(net(ii), sta(ii), '00', channel, t1(ii), t2(ii));
-            catch
-                % If couldn't find the data, assign the index to 1 and skip
-                notfound(ii) = 1;
-                continue
+        seis(sizestruct) = struct();
+        
+        % Now need to loop to save the structure every 20k
+        % Set a variable for counting 20ks
+        count20k = 0;
+        for jj = 1:num
+            % Define the new arrays
+            % The starting and ending index...
+            ind1 = (count20k*20000)+1;
+            ind2 = ind1+sizestruct-1;
+            % Check if the ending index exceeded the length of the original
+            % data. Define the new arrays accordingly
+            if ind2 <= length(net)
+                newnet = net(ind1:ind2);
+                newsta = sta(ind1:ind2);
+                newt1 = t1(ind1:ind2);
+                newt2 = t2(ind1:ind2);
+            else
+                newnet = net(ind1:end);
+                newsta = sta(ind1:end);
+                newt1 = t1(ind1:end);
+                newt2 = t2(ind1:end);
+            end 
+
+            % For all event-station pairs in the file, call irisFetch to get 
+            % the data and store them into a structure array
+            for ii = 1:sizestruct
+                ii
+                try
+                    tr = irisFetch.Traces(newnet(ii), newsta(ii), '*', channel, newt1(ii), newt2(ii));
+                catch
+                    % If couldn't find the data, assign the index to 1 and skip
+                    continue
+                end
+                % If data was found, store it into a structure
+                seis(ii).evesta = tr;
             end
-            % If data was found, store it into a structure
-            seis(ii).info = tr;
+            % Save the structure
+            save(sprintf('%sdata%d', outfdir, count20k), 'seis');
+            % Clear the structure
+            clear seis
+            % Update the count
+            count20k = count20k + 1;
         end
         
     case 2
